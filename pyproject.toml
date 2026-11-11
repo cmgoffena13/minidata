@@ -1,0 +1,64 @@
+[project]
+name = "minidata"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "deltalake>=1.6.6",
+    "duckdb>=2.0.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
+    "opentelemetry-sdk>=1.45.1",
+    "polars[deltalake]>=2.1.0",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.0",
+    "structlog>=26.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "prek>=0.5.5",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.1.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.17.1",
+    "ty>=0.0.89",
+]
+
+[tool.pytest.ini_options]
+testpaths = [ "src/tests" ]
+pythonpath = [ "." ]
+
+[tool.coverage.run]
+omit = ["src/tests/*"]
+
+[tool.coverage.report]
+fail_under = 90
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+force-exclude = true  # Honor exclude on pre-commit pass filenames
+lint.extend-select = [
+    "A",     # Builtins
+    "DTZ",   # Datetime
+    "SIM",   # Simplify
+    "I",     # Isort Imports
+    "S",     # Bandit
+    "PT",    # Pytest
+    "B",     # BugBear
+    "N",     # Naming Conventions
+    "RUF",   # Ruff Specific Rules
+    "PTH",   # Pathlib
+    "ARG",   # Unused Args
+    "C4",    # Force Current List Comprehensions
+    "RET",   # Return Checks
+    "E501",  # Line Too Long
+    "ANN401" # No 'Any'
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test_*.py" = ["S101"]  # Proper use of assert
+
+[tool.uv]
+exclude-newer = "7 days"  # Skip packages uploaded in the last 7 days (supply-chain cooldown).
