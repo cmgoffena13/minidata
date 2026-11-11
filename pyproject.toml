@@ -31,7 +31,7 @@ testpaths = [ "src/tests" ]
 pythonpath = [ "." ]
 
 [tool.coverage.run]
-omit = ["src/tests/*"]
+omit = ["src/tests/*", "src/logging_conf.py", "src/settings.py"]
 
 [tool.coverage.report]
 fail_under = 90
