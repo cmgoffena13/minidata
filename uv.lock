@@ -350,6 +350,7 @@ dependencies = [
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
     { name = "polars", extra = ["deltalake"] },
+    { name = "poldantic" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "structlog" },
@@ -372,6 +373,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.45.1" },
     { name = "opentelemetry-sdk", specifier = ">=1.45.1" },
     { name = "polars", extras = ["deltalake"], specifier = ">=2.1.0" },
+    { name = "poldantic", specifier = ">=0.3.1" },
     { name = "pydantic", specifier = ">=2.14.1" },
     { name = "pydantic-settings", specifier = ">=2.16.0" },
     { name = "structlog", specifier = ">=26.1.0" },
@@ -548,6 +550,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/33/4d/d76cd42042605e079d6df91cc4fea09ed5f4cb836c72c952a17f585860a9/polars_runtime_32-2.1.0-cp311-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:af58b5f6e5cc44b578f2a93d752f87c135c3a53205b4360301bc3a9b89dfbfd1", size = 53794253, upload-time = "2026-10-25T17:58:57.99Z" },
     { url = "https://files.pythonhosted.org/packages/4d/4e/2a419d0def2908255dd1b7318c48430319859dc92ca156e2f81ff7bcd78b/polars_runtime_32-2.1.0-cp311-abi3-win_amd64.whl", hash = "sha256:f2fe32f48af2395cd6ec52a433a03970a69aab1dbb66a613729fd549ce92c904", size = 53926265, upload-time = "2026-10-25T17:59:03.13Z" },
     { url = "https://files.pythonhosted.org/packages/c8/1b/15ffba3264baf21d2f04c51f54b01159cb6f4fad4e84de1404be552d601f/polars_runtime_32-2.1.0-cp311-abi3-win_arm64.whl", hash = "sha256:0af30dd53a7725f703d0d21dd421a39e0165378bfaa41431008f286608376d71", size = 48636436, upload-time = "2026-10-25T17:59:08.476Z" },
+]
+
+[[package]]
+name = "poldantic"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "polars" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/7c/5a49d884aa174132f2694f10f8fc1efb923baa30a9ea57c347e0c2b4b0a0/poldantic-0.3.1.tar.gz", hash = "sha256:ecde5b41157cd600fcf7a138e1ca94813c46b4900c0c4e93660da35804aa3a43", size = 19062, upload-time = "2025-10-21T20:46:00.27Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/46/e1e3d92e9e8b271931c2ff8fbfee5f1aa0ecfce0a7e211df0e6a4f4da811/poldantic-0.3.1-py3-none-any.whl", hash = "sha256:ef1b25d89947a48d75ddd27c0b6389d09154fca1a1e037860e40e16ded2ff631", size = 13404, upload-time = "2025-10-21T20:45:59.144Z" },
 ]
 
 [[package]]

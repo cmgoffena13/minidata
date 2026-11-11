@@ -21,6 +21,7 @@ class GlobalConfig(BaseConfig):
     OPEN_TELEMETRY_LOG_ENDPOINT: HttpUrl | None = None
     OPEN_TELEMETRY_AUTHORIZATION_TOKEN: str | None = None
     OPEN_TELEMETRY_FLAG: bool = False
+    DATAWAREHOUSE_URL: str | None = None
 
     @model_validator(mode="after")
     def require_otel_config(self):
@@ -39,6 +40,7 @@ class GlobalConfig(BaseConfig):
 
 class DevConfig(GlobalConfig):
     LOG_LEVEL: LogLevel = "DEBUG"  # Overrides the global LOG_LEVEL
+    DATAWAREHOUSE_URL = "src/datawarehouse"
 
     model_config = SettingsConfigDict(env_prefix="DEV_")
 
