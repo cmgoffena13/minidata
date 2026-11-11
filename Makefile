@@ -35,4 +35,4 @@ test-cov:
 	uv run -- pytest -v -n auto --cov=src --cov-report=term-missing
 
 run:
-	uv run -- python -m src.main
+	uv run -- python -m main
