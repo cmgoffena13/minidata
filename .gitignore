@@ -3,6 +3,8 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+datawarehouse/
+
 # JSON (JSON has no place here) - GCP Credentials, etc.
 *.json
 !cookiecutter.json

@@ -40,7 +40,7 @@ class GlobalConfig(BaseConfig):
 
 class DevConfig(GlobalConfig):
     LOG_LEVEL: LogLevel = "DEBUG"  # Overrides the global LOG_LEVEL
-    DATAWAREHOUSE_URL = "src/datawarehouse"
+    DATAWAREHOUSE_URL = "datawarehouse/"
 
     model_config = SettingsConfigDict(env_prefix="DEV_")
 

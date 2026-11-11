@@ -4,7 +4,8 @@ install:
 	git init
 	uv sync --all-extras
 	uv run -- prek install
-	cp .env.example .env
+	test -f .env || cp .env.example .env
+	test -d datawarehouse || mkdir datawarehouse
 
 clean:
 	rm -rf __pycache__ .pytest_cache .ruff_cache .coverage
