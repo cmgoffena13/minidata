@@ -1,9 +1,13 @@
-from src.sources.base import SourceConfig
+import structlog
+
+from src.sources.registry import SourceRegistry
+
+logger = structlog.getLogger(__name__)
 
 
 class Processor:
-    def __init__(self, master_registry: list[SourceConfig]):
+    def __init__(self, master_registry: SourceRegistry):
         self.master_registry = master_registry
 
     def process(self) -> None:
-        pass
+        logger.info("Processing started")

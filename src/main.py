@@ -1,14 +1,12 @@
-import logging
+import structlog
 
 from src.logging_conf import setup_logging
+from src.processor import Processor
+from src.sources.master import MASTER_REGISTRY
 
-logger = logging.getLogger("src")
-
-
-def main() -> None:
-    logger.info("Application started", extra={"custom_field": "custom_value"})
-
+logger = structlog.getLogger("src")
 
 if __name__ == "__main__":
     setup_logging()
-    main()
+    processor = Processor(MASTER_REGISTRY)
+    processor.process()
