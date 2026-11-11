@@ -23,7 +23,7 @@ Ingest data from multiple sources using Polars into Delta Tables.
 ## Main Python Packages
  - `Polars`: primary ingestion tool
  - `Delta Table`: primary target table format
- - `SQLMesh`: transformation framework that will build in duckdb
+ - `Poldantic`: turn a pydantic schema into polars schema
 
 ## General Workflow
  1. Trigger `Processor.process()`

@@ -12,6 +12,7 @@ class BaseSchema(BaseModel):
 
 class SourceConfig(BaseModel):
     name: str
+    source_type: str
     source_schema: type[BaseSchema]
     grain: list[str]
     partition_by: list[str] | None = None
