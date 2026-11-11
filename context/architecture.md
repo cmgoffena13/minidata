@@ -18,7 +18,7 @@ Ingest data from multiple sources using Polars into Delta Tables.
  - `src/pipeline/runner.py`: holds `PipelineRunner` class that holds the pipeline logic
 
 ## Main Architecture Components
- - Cloud Storage Bucket: target data warehouse that holds delta tables (dev is local FS)
+ - `Cloud Storage Bucket`: target data warehouse that holds delta tables (dev is local FS)
 
 ## Main Python Packages
  - `Polars`: primary ingestion tool
