@@ -1,0 +1,30 @@
+from polars import LazyFrame
+
+from src.settings import config
+from src.sources.base import SourceConfig
+
+
+class DeltaWriter:
+    def __init__(self, source_config: SourceConfig) -> None:
+        self.source_config = source_config
+
+    def write(self, frame: LazyFrame) -> str:
+        target = self._staging_target()
+        frame.sink_delta(
+            target,
+            mode="overwrite",
+            delta_write_options=self._write_options(),
+        )
+        return target
+
+    def _staging_target(self) -> str:
+        warehouse = config.DATAWAREHOUSE_URL
+        if warehouse is None:
+            raise ValueError("DATAWAREHOUSE_URL is not set")
+        return f"{warehouse.rstrip('/')}/staging/{self.source_config.name}"
+
+    def _write_options(self) -> dict[str, str | list[str]]:
+        options: dict[str, str | list[str]] = {"schema_mode": "overwrite"}
+        if self.source_config.partition_by:
+            options["partition_by"] = self.source_config.partition_by
+        return options
