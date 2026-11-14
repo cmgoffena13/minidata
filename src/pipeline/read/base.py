@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from polars import DataFrame
+from polars import LazyFrame
 
 from src.sources.base import SourceConfig
 
@@ -10,5 +10,5 @@ class BaseReader(ABC):
         self.source_config = config
 
     @abstractmethod
-    def read(self) -> DataFrame:
+    def read(self) -> LazyFrame:
         pass

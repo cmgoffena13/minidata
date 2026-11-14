@@ -9,13 +9,13 @@ class DeltaWriter:
         self.source_config = source_config
 
     def write(self, frame: LazyFrame) -> str:
-        target = self._staging_target()
+        staging_table_name = self._staging_target()
         frame.sink_delta(
-            target,
+            staging_table_name,
             mode="overwrite",
             delta_write_options=self._write_options(),
         )
-        return target
+        return staging_table_name
 
     def _staging_target(self) -> str:
         warehouse = config.DATAWAREHOUSE_URL

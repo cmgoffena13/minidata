@@ -1,7 +1,7 @@
 import time
 
 import pytest
-from polars import DataFrame
+from polars import LazyFrame
 
 from src.pipeline.read.base import BaseReader
 from src.pipeline.read.factory import ReaderFactory
@@ -26,22 +26,33 @@ def test_registry_collects_sources(widget_source: SourceConfig) -> None:
     assert isinstance(ALL_CONFIGS, SourceRegistry)
 
 
-def test_processor_starts(widget_source: SourceConfig) -> None:
+def test_processor_runs_each_source(
+    widget_source: SourceConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    other = widget_source.model_copy(update={"name": "gadgets"})
     registry = SourceRegistry()
-    registry.add_sources([widget_source])
+    registry.add_sources([widget_source, other])
+    started: list[SourceConfig] = []
+
+    def record(runner: PipelineRunner) -> None:
+        started.append(runner.source_config)
+
+    monkeypatch.setattr(PipelineRunner, "run", record)
     Processor(registry).process()
+    assert started == [widget_source, other]
 
 
 def test_reader_factory_returns_registered_reader(widget_source: SourceConfig) -> None:
     class StubReader(BaseReader):
-        def read(self) -> DataFrame:
+        def read(self) -> LazyFrame:
             super().read()
-            return DataFrame()
+            return LazyFrame()
 
     ReaderFactory.readers["inline"] = StubReader
     try:
         reader = ReaderFactory.get_reader(widget_source)
-        assert isinstance(reader.read(), DataFrame)
+        assert isinstance(reader.read(), LazyFrame)
     finally:
         del ReaderFactory.readers["inline"]
 
@@ -53,8 +64,6 @@ def test_reader_factory_rejects_unknown_source(widget_source: SourceConfig) -> N
 
 def test_runner_pending_steps_are_callable(widget_source: SourceConfig) -> None:
     runner = PipelineRunner(widget_source)
-    runner.read()
-    runner.validate()
     runner.audit()
     runner.publish()
     runner.run()
