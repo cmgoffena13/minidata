@@ -13,7 +13,11 @@ from src.sources.db_source import DBSourceConfig
 from src.tests.fixtures.widgets import WIDGET_ROWS, WidgetSchema
 
 
-def test_runner_reads_csv_location(tmp_path: Path, widget_frame: pl.LazyFrame) -> None:
+def test_runner_reads_csv_location(
+    tmp_path: Path,
+    widget_frame: pl.LazyFrame,
+    warehouse: Path,
+) -> None:
     location = tmp_path / "widgets.csv"
     widget_frame.collect().write_csv(location)
     source = CSVSourceConfig(
@@ -26,9 +30,14 @@ def test_runner_reads_csv_location(tmp_path: Path, widget_frame: pl.LazyFrame) -
     frame = PipelineRunner(source).read()
     written = frame.collect().sort("widget_id")
     assert written.equals(widget_frame.collect().sort("widget_id"))
+    assert (warehouse / "widgets").is_dir()
 
 
-def test_runner_reads_database_location(tmp_path: Path, widget_frame: pl.LazyFrame) -> None:
+def test_runner_reads_database_location(
+    tmp_path: Path,
+    widget_frame: pl.LazyFrame,
+    warehouse: Path,
+) -> None:
     database = tmp_path / "widgets.db"
     connection = sqlite3.connect(database)
     connection.execute("CREATE TABLE widgets (widget_id INTEGER, color TEXT)")
@@ -48,6 +57,7 @@ def test_runner_reads_database_location(tmp_path: Path, widget_frame: pl.LazyFra
     frame = PipelineRunner(source).read()
     written = frame.collect().sort("widget_id")
     assert written.equals(widget_frame.collect().sort("widget_id"))
+    assert (warehouse / "widgets").is_dir()
 
 
 def test_readers_reject_plain_source_config(widget_source: SourceConfig) -> None:

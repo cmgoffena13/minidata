@@ -29,6 +29,7 @@ def test_registry_collects_sources(widget_source: SourceConfig) -> None:
 def test_processor_runs_each_source(
     widget_source: SourceConfig,
     monkeypatch: pytest.MonkeyPatch,
+    warehouse,
 ) -> None:
     other = widget_source.model_copy(update={"name": "gadgets"})
     registry = SourceRegistry()
@@ -41,6 +42,8 @@ def test_processor_runs_each_source(
     monkeypatch.setattr(PipelineRunner, "run", record)
     Processor(registry).process()
     assert started == [widget_source, other]
+    assert (warehouse / "widgets").is_dir()
+    assert (warehouse / "gadgets").is_dir()
 
 
 def test_reader_factory_returns_registered_reader(widget_source: SourceConfig) -> None:
@@ -62,11 +65,10 @@ def test_reader_factory_rejects_unknown_source(widget_source: SourceConfig) -> N
         ReaderFactory.get_reader(widget_source)
 
 
-def test_runner_pending_steps_are_callable(widget_source: SourceConfig) -> None:
+def test_runner_pending_steps_are_callable(widget_source: SourceConfig, warehouse) -> None:
     runner = PipelineRunner(widget_source)
-    runner.audit()
-    runner.publish()
     runner.run()
+    assert (warehouse / "widgets").is_dir()
 
 
 def test_retry_returns_after_failure(monkeypatch: pytest.MonkeyPatch) -> None:
