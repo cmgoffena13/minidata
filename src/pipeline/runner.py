@@ -19,6 +19,7 @@ class PipelineRunner:
         create_target_table(source_config)
         self.publisher = Publisher(source_config)
 
+    @retry()
     def read(self) -> LazyFrame:
         return ReaderFactory.get_reader(self.source_config).read()
 
@@ -33,6 +34,7 @@ class PipelineRunner:
     def publish(self, staging_table_name: str) -> None:
         self.publisher.publish(staging_table_name)
 
+    @retry()
     def cleanup(self, staging_table_name: str) -> None:
         table = DeltaTable(staging_table_name)
         DeltaStorageHandler.from_table(table._table).delete_dir("")
