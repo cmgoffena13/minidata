@@ -1,3 +1,5 @@
+from fnmatch import fnmatchcase
+
 from pydantic import BaseModel, Field
 
 from src.sources.base import SourceConfig
@@ -11,6 +13,9 @@ class SourceRegistry(BaseModel):
 
     def get_sources(self) -> list[SourceConfig]:
         return self.sources
+
+    def find_sources(self, pattern: str) -> list[SourceConfig]:
+        return [source for source in self.sources if fnmatchcase(source.name, pattern)]
 
 
 ALL_CONFIGS = SourceRegistry()

@@ -22,6 +22,13 @@ def test_registry_collects_sources(widget_source: SourceConfig) -> None:
     registry = SourceRegistry()
     registry.add_sources([widget_source])
     assert registry.get_sources() == [widget_source]
+    first = widget_source.model_copy(update={"name": "widget_a"})
+    second = widget_source.model_copy(update={"name": "widget_b"})
+    other = widget_source.model_copy(update={"name": "gadgets"})
+    registry.add_sources([first, second, other])
+    assert registry.find_sources("widget_*") == [first, second]
+    assert registry.find_sources("widget_a") == [first]
+    assert registry.find_sources("Widget_*") == []
     assert isinstance(MASTER_REGISTRY, SourceRegistry)
     assert isinstance(ALL_CONFIGS, SourceRegistry)
 
@@ -42,8 +49,18 @@ def test_processor_runs_each_source(
     monkeypatch.setattr(PipelineRunner, "run", record)
     Processor(registry).process()
     assert started == [widget_source, other]
+    started.clear()
+    Processor(registry).process("widgets")
+    assert started == [widget_source]
+    with pytest.raises(ValueError, match="missing"):
+        Processor(registry).process("missing")
     assert (warehouse / "widgets").is_dir()
     assert (warehouse / "gadgets").is_dir()
+    started.clear()
+    matched = widget_source.model_copy(update={"name": "widget_extra"})
+    registry.add_sources([matched])
+    Processor(registry).process("widget_*")
+    assert started == [matched]
 
 
 def test_reader_factory_returns_registered_reader(widget_source: SourceConfig) -> None:

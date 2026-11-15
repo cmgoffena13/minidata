@@ -1,10 +1,11 @@
-import typer
+from typer import Argument, Exit, Typer, echo
 
+from src.exceptions import SourceNotFoundError
 from src.logging_conf import setup_logging
 from src.processor import Processor
 from src.sources.master import MASTER_REGISTRY
 
-app = typer.Typer(
+app = Typer(
     name="minidata",
     no_args_is_help=True,
     add_completion=False,
@@ -19,8 +20,12 @@ def cli() -> None:
 
 
 @app.command()
-def process() -> None:
-    Processor(MASTER_REGISTRY).process()
+def process(source: str | None = Argument(None)) -> None:
+    try:
+        Processor(MASTER_REGISTRY).process(source)
+    except SourceNotFoundError as error:
+        echo(str(error))
+        raise Exit(1) from None
 
 
 def main() -> None:
