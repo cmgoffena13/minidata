@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
@@ -53,9 +54,11 @@ def test_runner_creates_empty_target(widget_source, warehouse) -> None:
         "etl_row_hash",
         "etl_created_on",
         "etl_updated_on",
+        "is_source_system_active",
     ]
     assert target.schema["etl_created_on"] == pl.Datetime(time_zone="UTC")
     assert target.schema["etl_updated_on"] == pl.Datetime(time_zone="UTC")
+    assert target.schema["is_source_system_active"] == pl.Boolean
     PipelineRunner(widget_source)
     assert pl.read_delta(f"{warehouse}/widgets").is_empty()
 
@@ -66,7 +69,10 @@ def test_select_target_reads_the_published_rows(widget_source, widget_frame, war
     expected = add_etl_row_hash(widget_frame).collect().sort("widget_id")
     rows = sorted(select_target(widget_source))
     assert [row[:3] for row in rows] == list(expected.iter_rows())
-    assert all(created is not None and updated is None for _, _, _, created, updated in rows)
+    assert all(
+        created is not None and updated is None and active is True
+        for _, _, _, created, updated, active in rows
+    )
     assert (warehouse / "widgets").is_dir()
 
 
@@ -86,15 +92,18 @@ def test_publish_stamps_created_on_and_updates_changed_rows(
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
     changed = published.filter(pl.col("widget_id") == 2)
     inserted = published.filter(pl.col("widget_id") == 4)
-    unchanged = published.filter(pl.col("widget_id").is_in([1, 3]))
+    missing = published.filter(pl.col("widget_id").is_in([1, 3]))
     assert changed["etl_updated_on"].null_count() == 0
     assert changed["etl_created_on"].equals(
         first.filter(pl.col("widget_id") == 2)["etl_created_on"]
     )
+    assert changed["is_source_system_active"].to_list() == [True]
     assert inserted["etl_created_on"].null_count() == 0
     assert inserted["etl_updated_on"].null_count() == 1
-    assert unchanged["etl_updated_on"].null_count() == unchanged.height
-    assert unchanged["etl_created_on"].equals(
+    assert inserted["is_source_system_active"].to_list() == [True]
+    assert missing["is_source_system_active"].to_list() == [False, False]
+    assert missing["etl_updated_on"].null_count() == 0
+    assert missing["etl_created_on"].equals(
         first.filter(pl.col("widget_id").is_in([1, 3]))["etl_created_on"]
     )
 
@@ -108,9 +117,12 @@ def test_publish_merges_staging_into_target(widget_source, widget_frame, warehou
     assert not DeltaTable.is_deltatable(staging_table_name)
     assert not Path(staging_table_name).exists()
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
-    assert published.drop("etl_row_hash", "etl_created_on", "etl_updated_on").equals(
-        widget_frame.collect().sort("widget_id")
-    )
+    assert published.drop(
+        "etl_row_hash",
+        "etl_created_on",
+        "etl_updated_on",
+        "is_source_system_active",
+    ).equals(widget_frame.collect().sort("widget_id"))
     assert published["etl_row_hash"].equals(
         add_etl_row_hash(widget_frame).collect().sort("widget_id")["etl_row_hash"]
     )
@@ -122,9 +134,12 @@ def test_publish_merges_staging_into_target(widget_source, widget_frame, warehou
     assert not Path(staging_table_name).exists()
     expected = pl.DataFrame({"widget_id": [1, 2, 3, 4], "color": ["red", "green", "red", "gold"]})
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
-    assert published.drop("etl_row_hash", "etl_created_on", "etl_updated_on").equals(
-        expected.sort("widget_id")
-    )
+    assert published.drop(
+        "etl_row_hash",
+        "etl_created_on",
+        "etl_updated_on",
+        "is_source_system_active",
+    ).equals(expected.sort("widget_id"))
     assert published["etl_row_hash"].equals(
         add_etl_row_hash(expected.lazy()).collect().sort("widget_id")["etl_row_hash"]
     )
@@ -144,3 +159,44 @@ def test_publisher_requires_warehouse(widget_source, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(config, "DATAWAREHOUSE_URL", None)
     with pytest.raises(ValueError, match="DATAWAREHOUSE_URL"):
         PipelineRunner(widget_source)
+
+
+def test_snapshot_replaces_the_runtime_date(widget_source, widget_frame, warehouse) -> None:
+    assert widget_source.publish_mode == "mirror"
+    source = widget_source.model_copy(update={"publish_mode": "snapshot"})
+    runner = PipelineRunner(source)
+    target = pl.read_delta(f"{warehouse}/widgets")
+    assert target.schema["snapshot_date"] == pl.Date
+    assert "etl_updated_on" not in target.columns
+    runner.publish(runner.write(widget_frame))
+    snapshot_date = datetime.now(UTC).date()
+    published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
+    assert published["snapshot_date"].unique().to_list() == [snapshot_date]
+    assert published.height == 3
+    assert published["etl_created_on"].null_count() == 0
+    historical = published.head(1).with_columns(
+        pl.lit(snapshot_date - timedelta(days=1)).alias("snapshot_date")
+    )
+    historical.write_delta(f"{warehouse}/widgets", mode="append")
+    runner.publish(runner.write(pl.LazyFrame({"widget_id": [2], "color": ["green"]})))
+    result = pl.read_delta(f"{warehouse}/widgets")
+    earlier = result.filter(pl.col("snapshot_date") < snapshot_date)
+    today = result.filter(pl.col("snapshot_date") == snapshot_date)
+    assert earlier["widget_id"].to_list() == [published["widget_id"][0]]
+    assert today["widget_id"].to_list() == [2]
+    assert today["color"].to_list() == ["green"]
+    assert today["etl_created_on"].null_count() == 0
+
+
+def test_mirror_reactivates_a_row_that_returns(widget_source, widget_frame, warehouse) -> None:
+    runner = PipelineRunner(widget_source)
+    runner.publish(runner.write(widget_frame))
+    runner.publish(runner.write(pl.LazyFrame({"widget_id": [2], "color": ["blue"]})))
+    inactive = pl.read_delta(f"{warehouse}/widgets").filter(pl.col("widget_id") != 2)
+    runner.publish(runner.write(pl.LazyFrame({"widget_id": [2], "color": ["blue"]})))
+    still = pl.read_delta(f"{warehouse}/widgets").filter(pl.col("widget_id") != 2).sort("widget_id")
+    assert still["etl_updated_on"].equals(inactive.sort("widget_id")["etl_updated_on"])
+    runner.publish(runner.write(widget_frame))
+    restored = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
+    assert restored["is_source_system_active"].to_list() == [True, True, True]
+    assert restored.filter(pl.col("widget_id") == 2)["etl_updated_on"].null_count() == 1

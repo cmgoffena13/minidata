@@ -1,3 +1,5 @@
+from typing import Literal
+
 from poldantic import to_polars_schema as poldantic_to_polars_schema
 from pydantic import BaseModel, ConfigDict
 
@@ -16,3 +18,4 @@ class SourceConfig(BaseModel):
     source_schema: type[BaseSchema]
     grain: list[str]
     partition_by: list[str] | None = None
+    publish_mode: Literal["mirror", "snapshot"] = "mirror"

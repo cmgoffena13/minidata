@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from polars import DataFrame, Datetime, String
+from polars import Boolean, DataFrame, Date, Datetime, String
 
 from src.settings import config
 from src.sources.base import SourceConfig
@@ -25,7 +25,11 @@ def create_target_table(source_config: SourceConfig) -> str:
     schema = dict(source_config.source_schema.to_polars_schema())
     schema["etl_row_hash"] = String
     schema["etl_created_on"] = Datetime(time_zone="UTC")
-    schema["etl_updated_on"] = Datetime(time_zone="UTC")
+    if source_config.publish_mode == "mirror":
+        schema["etl_updated_on"] = Datetime(time_zone="UTC")
+        schema["is_source_system_active"] = Boolean
+    if source_config.publish_mode == "snapshot":
+        schema["snapshot_date"] = Date
     frame = DataFrame(schema=schema)
     partitions = source_config.partition_by
     write_options = {"partition_by": partitions} if partitions else None
