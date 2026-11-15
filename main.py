@@ -1,4 +1,27 @@
-from src.cli.main import main
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+
+
+from src.logging_conf import setup_logging
+from src.processor import Processor
+from src.sources.csv_source import CSVSourceConfig
+from src.sources.registry import SourceRegistry
+from src.tests.fixtures.widgets import WidgetSchema
+
+
+def main() -> None:
+    setup_logging()
+    source = CSVSourceConfig(
+        name="widgets",
+        source_schema=WidgetSchema,
+        grain=["widget_id"],
+        location=str(ROOT / "src/tests/fixtures/files/widgets.csv"),
+    )
+    registry = SourceRegistry()
+    registry.add_sources([source])
+    Processor(registry).process()
+
 
 if __name__ == "__main__":
     main()

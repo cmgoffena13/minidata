@@ -1,14 +1,11 @@
 from polars import DataFrame
 
-from src.settings import config
+from src.pipeline.pipeline_utils import warehouse_directory
 from src.sources.base import SourceConfig
 
 
 def target_table_name(source_config: SourceConfig) -> str:
-    warehouse = config.DATAWAREHOUSE_URL
-    if warehouse is None:
-        raise ValueError("DATAWAREHOUSE_URL is not set")
-    return f"{warehouse.rstrip('/')}/{source_config.name}"
+    return f"{warehouse_directory()}/{source_config.name}"
 
 
 def create_target_table(source_config: SourceConfig) -> str:

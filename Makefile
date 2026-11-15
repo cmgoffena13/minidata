@@ -35,4 +35,4 @@ test-cov:
 	uv run -- pytest -v -n auto --cov=src --cov-report=term-missing
 
 run:
-	uv run -- minidata process
+	uv run -- python main.py

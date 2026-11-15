@@ -1,6 +1,6 @@
 from polars import LazyFrame
 
-from src.settings import config
+from src.pipeline.pipeline_utils import warehouse_directory
 from src.sources.base import SourceConfig
 
 
@@ -18,10 +18,7 @@ class DeltaWriter:
         return staging_table_name
 
     def _staging_target(self) -> str:
-        warehouse = config.DATAWAREHOUSE_URL
-        if warehouse is None:
-            raise ValueError("DATAWAREHOUSE_URL is not set")
-        return f"{warehouse.rstrip('/')}/staging/{self.source_config.name}"
+        return f"{warehouse_directory()}/staging_{self.source_config.name}"
 
     def _write_options(self) -> dict[str, str | list[str]]:
         options: dict[str, str | list[str]] = {"schema_mode": "overwrite"}

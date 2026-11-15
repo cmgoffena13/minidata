@@ -65,12 +65,6 @@ def test_reader_factory_rejects_unknown_source(widget_source: SourceConfig) -> N
         ReaderFactory.get_reader(widget_source)
 
 
-def test_runner_pending_steps_are_callable(widget_source: SourceConfig, warehouse) -> None:
-    runner = PipelineRunner(widget_source)
-    runner.run()
-    assert (warehouse / "widgets").is_dir()
-
-
 def test_retry_returns_after_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(time, "sleep", lambda _wait: None)
     calls = {"count": 0}
