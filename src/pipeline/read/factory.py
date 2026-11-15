@@ -3,6 +3,7 @@ from typing import ClassVar
 from src.pipeline.read.base import BaseReader
 from src.pipeline.read.csv_reader import CsvReader
 from src.pipeline.read.db_reader import DbReader
+from src.pipeline.read.parquet_reader import ParquetReader
 from src.sources.base import SourceConfig
 
 
@@ -10,6 +11,7 @@ class ReaderFactory:
     readers: ClassVar[dict[str, type[BaseReader]]] = {
         "csv": CsvReader,
         "db": DbReader,
+        "parquet": ParquetReader,
     }
 
     @classmethod

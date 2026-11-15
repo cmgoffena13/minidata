@@ -6,10 +6,12 @@ import pytest
 
 from src.pipeline.read.csv_reader import CsvReader
 from src.pipeline.read.db_reader import DbReader
+from src.pipeline.read.parquet_reader import ParquetReader
 from src.pipeline.runner import PipelineRunner
 from src.sources.base import SourceConfig
 from src.sources.csv_source import CSVSourceConfig
 from src.sources.db_source import DBSourceConfig
+from src.sources.parquet_source import ParquetSourceConfig
 from tests.fixtures.widgets import WIDGET_ROWS, WidgetSchema
 
 
@@ -21,6 +23,26 @@ def test_runner_reads_csv_location(
     location = tmp_path / "widgets.csv"
     widget_frame.collect().write_csv(location)
     source = CSVSourceConfig(
+        name="widgets",
+        source_schema=WidgetSchema,
+        grain=["widget_id"],
+        location=str(location),
+        storage_options={"aws_region": "us-east-1"},
+    )
+    frame = PipelineRunner(source).read()
+    written = frame.collect().sort("widget_id")
+    assert written.equals(widget_frame.collect().sort("widget_id"))
+    assert (warehouse / "widgets").is_dir()
+
+
+def test_runner_reads_parquet_location(
+    tmp_path: Path,
+    widget_frame: pl.LazyFrame,
+    warehouse: Path,
+) -> None:
+    location = tmp_path / "widgets.parquet"
+    widget_frame.collect().write_parquet(location)
+    source = ParquetSourceConfig(
         name="widgets",
         source_schema=WidgetSchema,
         grain=["widget_id"],
@@ -65,3 +87,5 @@ def test_readers_reject_plain_source_config(widget_source: SourceConfig) -> None
         CsvReader(widget_source).read()
     with pytest.raises(TypeError, match="DBSourceConfig"):
         DbReader(widget_source).read()
+    with pytest.raises(TypeError, match="ParquetSourceConfig"):
+        ParquetReader(widget_source).read()
