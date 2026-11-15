@@ -5,7 +5,7 @@ from src.sources.db_source import DBSourceConfig
 
 
 class DbReader(BaseReader):
-    def read(self) -> LazyFrame:
+    def _read_source(self) -> LazyFrame:
         config = self.source_config
         if not isinstance(config, DBSourceConfig):
             raise TypeError("DbReader requires a DBSourceConfig")

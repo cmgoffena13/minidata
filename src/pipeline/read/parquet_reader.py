@@ -5,7 +5,7 @@ from src.sources.parquet_source import ParquetSourceConfig
 
 
 class ParquetReader(BaseReader):
-    def read(self) -> LazyFrame:
+    def _read_source(self) -> LazyFrame:
         config = self.source_config
         if not isinstance(config, ParquetSourceConfig):
             raise TypeError("ParquetReader requires a ParquetSourceConfig")

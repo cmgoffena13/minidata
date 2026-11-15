@@ -5,7 +5,7 @@ from src.sources.csv_source import CSVSourceConfig
 
 
 class CsvReader(BaseReader):
-    def read(self) -> LazyFrame:
+    def _read_source(self) -> LazyFrame:
         config = self.source_config
         if not isinstance(config, CSVSourceConfig):
             raise TypeError("CsvReader requires a CSVSourceConfig")

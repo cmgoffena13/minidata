@@ -98,10 +98,7 @@ def test_readers_reject_plain_source_config(widget_source: SourceConfig) -> None
         ParquetReader(widget_source).read()
 
 
-def test_runner_read_renames_aliased_csv_columns(
-    tmp_path: Path,
-    warehouse: Path,
-) -> None:
+def test_csv_reader_renames_aliased_columns(tmp_path: Path) -> None:
     location = tmp_path / "widgets.csv"
     pl.DataFrame({"Widget ID": [1], "Purchase Date": ["2024-01-02"], "color": ["red"]}).write_csv(
         location
@@ -115,16 +112,12 @@ def test_runner_read_renames_aliased_csv_columns(
         archive_directory=str(tmp_path / "archive"),
         location=str(location),
     )
-    written = PipelineRunner(source).read().collect()
+    written = CsvReader(source).read().collect()
     assert written.columns == ["widget_id", "purchase_date", "color"]
     assert written.to_dicts() == [{"widget_id": 1, "purchase_date": "2024-01-02", "color": "red"}]
-    assert (warehouse / "widgets").is_dir()
 
 
-def test_runner_read_rejects_files_missing_schema_columns(
-    tmp_path: Path,
-    warehouse: Path,
-) -> None:
+def test_csv_reader_rejects_files_missing_schema_columns(tmp_path: Path) -> None:
     location = tmp_path / "widgets.csv"
     pl.DataFrame({"widget_id": [1]}).write_csv(location)
     source = CSVSourceConfig(
@@ -137,8 +130,7 @@ def test_runner_read_rejects_files_missing_schema_columns(
         location=str(location),
     )
     with pytest.raises(SchemaConformanceError, match="color"):
-        PipelineRunner(source).read().collect()
-    assert (warehouse / "widgets").is_dir()
+        CsvReader(source).read().collect()
 
 
 def test_file_readers_require_a_resolved_location(tmp_path: Path) -> None:

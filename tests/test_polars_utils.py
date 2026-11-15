@@ -3,7 +3,11 @@ import pytest
 from xxhash import xxh128_hexdigest
 
 from src.exceptions import SchemaConformanceError
-from src.pipeline.polars_utils import add_etl_row_hash, conform_to_schema
+from src.pipeline.polars_utils import (
+    add_etl_row_hash,
+    conform_to_schema,
+    null_blank_strings,
+)
 from tests.fixtures.widgets import AliasedWidgetSchema, WidgetSchema
 
 
@@ -45,6 +49,18 @@ def test_conform_to_schema_casts_and_keeps_extra_columns() -> None:
     assert conformed.schema["widget_id"] == pl.Int64
     assert conformed.columns == ["widget_id", "color", "size"]
     assert conformed.to_dicts() == [{"widget_id": 1, "color": "red", "size": "L"}]
+
+
+def test_null_blank_strings_replaces_empty_values() -> None:
+    frame = pl.LazyFrame(
+        {"widget_id": ["1", ""], "color": ["", "blue"], "count": [1, 2]},
+        schema={"widget_id": pl.String, "color": pl.String, "count": pl.Int64},
+    )
+    cleaned = null_blank_strings(frame).collect()
+    assert cleaned.to_dicts() == [
+        {"widget_id": "1", "color": None, "count": 1},
+        {"widget_id": None, "color": "blue", "count": 2},
+    ]
 
 
 def test_conform_to_schema_renames_aliased_source_columns() -> None:

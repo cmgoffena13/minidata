@@ -6,7 +6,6 @@ from polars import LazyFrame
 
 from src.pipeline.audit.auditor import StagingAuditor
 from src.pipeline.pipeline_utils import create_target_table
-from src.pipeline.polars_utils import conform_to_schema
 from src.pipeline.publish.publisher import Publisher
 from src.pipeline.read.factory import ReaderFactory
 from src.pipeline.write.writer import DeltaWriter
@@ -23,13 +22,7 @@ class PipelineRunner:
 
     @retry()
     def read(self) -> LazyFrame:
-        frame = ReaderFactory.get_reader(self.source_config).read()
-        source_schema = self.source_config.source_schema
-        return conform_to_schema(
-            frame,
-            source_schema.to_polars_schema(),
-            source_schema.source_rename_map(),
-        )
+        return ReaderFactory.get_reader(self.source_config).read()
 
     def write(self, frame: LazyFrame, staging_name: str | None = None) -> str:
         return DeltaWriter(self.source_config).write(frame=frame, staging_name=staging_name)

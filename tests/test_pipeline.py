@@ -78,9 +78,8 @@ def test_processor_runs_each_source(
 
 def test_reader_factory_returns_registered_reader(widget_source: SourceConfig) -> None:
     class StubReader(BaseReader):
-        def read(self) -> LazyFrame:
-            super().read()
-            return LazyFrame()
+        def _read_source(self) -> LazyFrame:
+            return LazyFrame({"widget_id": [1], "color": ["red"]})
 
     ReaderFactory.readers["inline"] = StubReader
     try:

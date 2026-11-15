@@ -4,6 +4,10 @@ from xxhash import xxh128_hexdigest
 from src.exceptions import SchemaConformanceError
 
 
+def null_blank_strings(frame: LazyFrame) -> LazyFrame:
+    return frame.with_columns(col(String).replace("", None))
+
+
 def conform_to_schema(
     frame: LazyFrame,
     schema: dict,
