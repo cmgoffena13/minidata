@@ -27,4 +27,17 @@ class Publisher:
         )
         if merger is None:
             raise RuntimeError("Delta merge was not started")
-        merger.when_matched_update_all().when_not_matched_insert_all().execute()
+        assignments = self._source_assignments()
+        hash_changed = (
+            f"s.{quote_identifier('etl_row_hash')} != t.{quote_identifier('etl_row_hash')}"
+        )
+        merger.when_matched_update(
+            updates={**assignments, "etl_updated_on": "current_timestamp()"},
+            predicate=hash_changed,
+        ).when_not_matched_insert(
+            updates={**assignments, "etl_created_on": "current_timestamp()"},
+        ).execute()
+
+    def _source_assignments(self) -> dict[str, str]:
+        columns = [*self.source_config.source_schema.to_polars_schema(), "etl_row_hash"]
+        return {column: f"s.{quote_identifier(column)}" for column in columns}

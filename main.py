@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import duckdb
+from polars import DataFrame
 
 from src.logging_conf import setup_logging
 from src.pipeline.pipeline_utils import target_table_name
@@ -15,12 +16,11 @@ ROOT = Path(__file__).resolve().parent
 
 def select_target(source: SourceConfig) -> list[tuple[object, ...]]:
     with duckdb.connect() as connection:
-        return list(
-            connection.sql(
-                "SELECT * FROM delta_scan(?)",
-                params=[target_table_name(source)],
-            ).fetchall()
-        )
+        table = connection.sql(
+            "SELECT * FROM delta_scan(?)",
+            params=[target_table_name(source)],
+        ).arrow()
+        return list(DataFrame(table.read_all()).iter_rows())
 
 
 def main() -> None:

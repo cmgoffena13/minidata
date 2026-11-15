@@ -47,7 +47,15 @@ def test_runner_creates_empty_target(widget_source, warehouse) -> None:
     PipelineRunner(widget_source)
     target = pl.read_delta(f"{warehouse}/widgets")
     assert target.is_empty()
-    assert target.columns == ["widget_id", "color", "etl_row_hash"]
+    assert target.columns == [
+        "widget_id",
+        "color",
+        "etl_row_hash",
+        "etl_created_on",
+        "etl_updated_on",
+    ]
+    assert target.schema["etl_created_on"] == pl.Datetime(time_zone="UTC")
+    assert target.schema["etl_updated_on"] == pl.Datetime(time_zone="UTC")
     PipelineRunner(widget_source)
     assert pl.read_delta(f"{warehouse}/widgets").is_empty()
 
@@ -56,8 +64,39 @@ def test_select_target_reads_the_published_rows(widget_source, widget_frame, war
     runner = PipelineRunner(widget_source)
     runner.publish(runner.write(widget_frame))
     expected = add_etl_row_hash(widget_frame).collect().sort("widget_id")
-    assert sorted(select_target(widget_source)) == list(expected.iter_rows())
+    rows = sorted(select_target(widget_source))
+    assert [row[:3] for row in rows] == list(expected.iter_rows())
+    assert all(created is not None and updated is None for _, _, _, created, updated in rows)
     assert (warehouse / "widgets").is_dir()
+
+
+def test_publish_stamps_created_on_and_updates_changed_rows(
+    widget_source,
+    widget_frame,
+    warehouse,
+) -> None:
+    runner = PipelineRunner(widget_source)
+    runner.publish(runner.write(widget_frame))
+    first = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
+    runner.publish(runner.write(widget_frame))
+    repeated = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
+    assert first["etl_created_on"].null_count() == 0
+    assert repeated.equals(first)
+    runner.publish(runner.write(pl.LazyFrame({"widget_id": [2, 4], "color": ["green", "gold"]})))
+    published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
+    changed = published.filter(pl.col("widget_id") == 2)
+    inserted = published.filter(pl.col("widget_id") == 4)
+    unchanged = published.filter(pl.col("widget_id").is_in([1, 3]))
+    assert changed["etl_updated_on"].null_count() == 0
+    assert changed["etl_created_on"].equals(
+        first.filter(pl.col("widget_id") == 2)["etl_created_on"]
+    )
+    assert inserted["etl_created_on"].null_count() == 0
+    assert inserted["etl_updated_on"].null_count() == 1
+    assert unchanged["etl_updated_on"].null_count() == unchanged.height
+    assert unchanged["etl_created_on"].equals(
+        first.filter(pl.col("widget_id").is_in([1, 3]))["etl_created_on"]
+    )
 
 
 def test_publish_merges_staging_into_target(widget_source, widget_frame, warehouse) -> None:
@@ -69,7 +108,9 @@ def test_publish_merges_staging_into_target(widget_source, widget_frame, warehou
     assert not DeltaTable.is_deltatable(staging_table_name)
     assert not Path(staging_table_name).exists()
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
-    assert published.drop("etl_row_hash").equals(widget_frame.collect().sort("widget_id"))
+    assert published.drop("etl_row_hash", "etl_created_on", "etl_updated_on").equals(
+        widget_frame.collect().sort("widget_id")
+    )
     assert published["etl_row_hash"].equals(
         add_etl_row_hash(widget_frame).collect().sort("widget_id")["etl_row_hash"]
     )
@@ -81,7 +122,9 @@ def test_publish_merges_staging_into_target(widget_source, widget_frame, warehou
     assert not Path(staging_table_name).exists()
     expected = pl.DataFrame({"widget_id": [1, 2, 3, 4], "color": ["red", "green", "red", "gold"]})
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
-    assert published.drop("etl_row_hash").equals(expected.sort("widget_id"))
+    assert published.drop("etl_row_hash", "etl_created_on", "etl_updated_on").equals(
+        expected.sort("widget_id")
+    )
     assert published["etl_row_hash"].equals(
         add_etl_row_hash(expected.lazy()).collect().sort("widget_id")["etl_row_hash"]
     )
