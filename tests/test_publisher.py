@@ -191,6 +191,12 @@ def test_publisher_requires_warehouse(widget_source, monkeypatch: pytest.MonkeyP
         PipelineRunner(widget_source)
 
 
+def test_snapshot_target_is_partitioned_by_snapshot_date(widget_source, warehouse) -> None:
+    source = widget_source.model_copy(update={"publish_mode": "snapshot"})
+    PipelineRunner(source)
+    assert DeltaTable(f"{warehouse}/widgets").metadata().partition_columns == ["snapshot_date"]
+
+
 def test_snapshot_replaces_the_runtime_date(widget_source, widget_frame, warehouse) -> None:
     assert widget_source.publish_mode == "mirror"
     source = widget_source.model_copy(update={"publish_mode": "snapshot"})

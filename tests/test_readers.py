@@ -4,6 +4,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
+from src.exceptions import SchemaConformanceError
 from src.pipeline.read.csv_reader import CsvReader
 from src.pipeline.read.db_reader import DbReader
 from src.pipeline.read.parquet_reader import ParquetReader
@@ -95,6 +96,26 @@ def test_readers_reject_plain_source_config(widget_source: SourceConfig) -> None
         DbReader(widget_source).read()
     with pytest.raises(TypeError, match="ParquetSourceConfig"):
         ParquetReader(widget_source).read()
+
+
+def test_runner_read_rejects_files_missing_schema_columns(
+    tmp_path: Path,
+    warehouse: Path,
+) -> None:
+    location = tmp_path / "widgets.csv"
+    pl.DataFrame({"widget_id": [1]}).write_csv(location)
+    source = CSVSourceConfig(
+        name="widgets",
+        source_schema=WidgetSchema,
+        grain=["widget_id"],
+        directory=str(tmp_path),
+        pattern="*.csv",
+        archive_directory=str(tmp_path / "archive"),
+        location=str(location),
+    )
+    with pytest.raises(SchemaConformanceError, match="color"):
+        PipelineRunner(source).read().collect()
+    assert (warehouse / "widgets").is_dir()
 
 
 def test_file_readers_require_a_resolved_location(tmp_path: Path) -> None:

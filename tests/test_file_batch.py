@@ -94,7 +94,7 @@ def test_file_batch_keeps_scan_file_when_publish_fails(
         raise ValueError("publish failed")
 
     monkeypatch.setattr(Publisher, "publish", fail)
-    monkeypatch.setattr("src.pipeline.pipeline_utils.time.sleep", lambda _seconds: None)
+    monkeypatch.setattr("src.utils.time.sleep", lambda _seconds: None)
     with pytest.raises(ValueError, match="publish failed"):
         _process(source)
     assert path.exists()
@@ -192,7 +192,7 @@ def test_file_batch_raises_after_commit_retries_are_exhausted(
         raise CommitFailedError("conflict")
 
     monkeypatch.setattr(Publisher, "publish", always_fail)
-    monkeypatch.setattr("src.pipeline.pipeline_utils.time.sleep", lambda _seconds: None)
+    monkeypatch.setattr("src.utils.time.sleep", lambda _seconds: None)
     with pytest.raises(CommitFailedError, match="conflict"):
         _process(source)
     assert path.exists()

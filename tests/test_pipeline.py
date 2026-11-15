@@ -3,6 +3,7 @@ import time
 import pytest
 from polars import LazyFrame
 
+from src.exceptions import NON_RETRYABLE_EXCEPTIONS, SchemaConformanceError
 from src.pipeline.read.base import BaseReader
 from src.pipeline.read.factory import ReaderFactory
 from src.pipeline.runner import PipelineRunner
@@ -12,6 +13,10 @@ from src.sources.master import MASTER_REGISTRY
 from src.sources.registry import ALL_CONFIGS, SourceRegistry
 from src.utils import retry
 from tests.fixtures.widgets import WidgetSchema
+
+
+def test_non_retryable_exceptions_includes_schema_conformance() -> None:
+    assert SchemaConformanceError in NON_RETRYABLE_EXCEPTIONS
 
 
 def test_schema_converts_to_polars() -> None:
@@ -80,6 +85,19 @@ def test_reader_factory_returns_registered_reader(widget_source: SourceConfig) -
 def test_reader_factory_rejects_unknown_source(widget_source: SourceConfig) -> None:
     with pytest.raises(ValueError, match="not found"):
         ReaderFactory.get_reader(widget_source)
+
+
+def test_retry_skips_schema_conformance_error() -> None:
+    calls = {"count": 0}
+
+    @retry(attempts=3, delay=0, backoff=1)
+    def broken() -> None:
+        calls["count"] += 1
+        raise SchemaConformanceError("color")
+
+    with pytest.raises(SchemaConformanceError, match="color"):
+        broken()
+    assert calls["count"] == 1
 
 
 def test_retry_returns_after_failure(monkeypatch: pytest.MonkeyPatch) -> None:

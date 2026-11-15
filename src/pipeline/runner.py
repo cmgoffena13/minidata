@@ -5,12 +5,14 @@ from deltalake.fs import DeltaStorageHandler
 from polars import LazyFrame
 
 from src.pipeline.audit.auditor import StagingAuditor
-from src.pipeline.pipeline_utils import create_target_table, retry
+from src.pipeline.pipeline_utils import create_target_table
+from src.pipeline.polars_utils import conform_to_schema
 from src.pipeline.publish.publisher import Publisher
 from src.pipeline.read.factory import ReaderFactory
 from src.pipeline.write.writer import DeltaWriter
 from src.sources.base import SourceConfig
 from src.sources.file_source import FileSourceConfig
+from src.utils import retry
 
 
 class PipelineRunner:
@@ -21,7 +23,9 @@ class PipelineRunner:
 
     @retry()
     def read(self) -> LazyFrame:
-        return ReaderFactory.get_reader(self.source_config).read()
+        frame = ReaderFactory.get_reader(self.source_config).read()
+        schema = self.source_config.source_schema.to_polars_schema()
+        return conform_to_schema(frame, schema)
 
     def write(self, frame: LazyFrame, staging_name: str | None = None) -> str:
         return DeltaWriter(self.source_config).write(frame=frame, staging_name=staging_name)

@@ -1,6 +1,16 @@
 from polars import LazyFrame, Series, String, col, concat_str
 from xxhash import xxh128_hexdigest
 
+from src.exceptions import SchemaConformanceError
+
+
+def conform_to_schema(frame: LazyFrame, schema: dict) -> LazyFrame:
+    names = set(frame.collect_schema().names())
+    missing = [name for name in schema if name not in names]
+    if missing:
+        raise SchemaConformanceError(f"Missing required columns: {', '.join(missing)}")
+    return frame.with_columns([col(name).cast(dtype) for name, dtype in schema.items()])
+
 
 def add_etl_row_hash(frame: LazyFrame) -> LazyFrame:
     columns = [name for name in frame.collect_schema().names() if name != "etl_row_hash"]

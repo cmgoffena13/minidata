@@ -2,6 +2,8 @@ import logging
 import time
 from functools import wraps
 
+from src.exceptions import NON_RETRYABLE_EXCEPTIONS
+
 logger = logging.getLogger(__name__)
 
 
@@ -13,6 +15,8 @@ def retry(attempts: int = 3, delay: float = 0.25, backoff: float = 2.0):
             for index in range(attempts):
                 try:
                     return func(*args, **kwargs)
+                except NON_RETRYABLE_EXCEPTIONS:
+                    raise
                 except Exception as e:
                     if index == attempts - 1:
                         raise
