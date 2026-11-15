@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from polars import DataFrame
+from polars import DataFrame, String
 
 from src.settings import config
 from src.sources.base import SourceConfig
@@ -22,7 +22,9 @@ def target_table_name(source_config: SourceConfig) -> str:
 
 def create_target_table(source_config: SourceConfig) -> str:
     table_name = target_table_name(source_config)
-    frame = DataFrame(schema=source_config.source_schema.to_polars_schema())
+    schema = dict(source_config.source_schema.to_polars_schema())
+    schema["etl_row_hash"] = String
+    frame = DataFrame(schema=schema)
     partitions = source_config.partition_by
     write_options = {"partition_by": partitions} if partitions else None
     frame.write_delta(table_name, mode="ignore", delta_write_options=write_options)

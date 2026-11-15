@@ -6,6 +6,7 @@ from deltalake import DeltaTable
 
 from main import select_target
 from src.pipeline.pipeline_utils import create_target_table
+from src.pipeline.polars_utils import add_etl_row_hash
 from src.pipeline.publish.publisher import Publisher
 from src.pipeline.runner import PipelineRunner
 from src.settings import config
@@ -46,7 +47,7 @@ def test_runner_creates_empty_target(widget_source, warehouse) -> None:
     PipelineRunner(widget_source)
     target = pl.read_delta(f"{warehouse}/widgets")
     assert target.is_empty()
-    assert target.columns == ["widget_id", "color"]
+    assert target.columns == ["widget_id", "color", "etl_row_hash"]
     PipelineRunner(widget_source)
     assert pl.read_delta(f"{warehouse}/widgets").is_empty()
 
@@ -54,7 +55,8 @@ def test_runner_creates_empty_target(widget_source, warehouse) -> None:
 def test_select_target_reads_the_published_rows(widget_source, widget_frame, warehouse) -> None:
     runner = PipelineRunner(widget_source)
     runner.publish(runner.write(widget_frame))
-    assert sorted(select_target(widget_source)) == [(1, "red"), (2, "blue"), (3, "red")]
+    expected = add_etl_row_hash(widget_frame).collect().sort("widget_id")
+    assert sorted(select_target(widget_source)) == list(expected.iter_rows())
     assert (warehouse / "widgets").is_dir()
 
 
@@ -67,7 +69,10 @@ def test_publish_merges_staging_into_target(widget_source, widget_frame, warehou
     assert not DeltaTable.is_deltatable(staging_table_name)
     assert not Path(staging_table_name).exists()
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
-    assert published.equals(widget_frame.collect().sort("widget_id"))
+    assert published.drop("etl_row_hash").equals(widget_frame.collect().sort("widget_id"))
+    assert published["etl_row_hash"].equals(
+        add_etl_row_hash(widget_frame).collect().sort("widget_id")["etl_row_hash"]
+    )
     update = pl.LazyFrame({"widget_id": [2, 4], "color": ["green", "gold"]})
     staging_table_name = runner.write(update)
     runner.publish(staging_table_name)
@@ -76,7 +81,10 @@ def test_publish_merges_staging_into_target(widget_source, widget_frame, warehou
     assert not Path(staging_table_name).exists()
     expected = pl.DataFrame({"widget_id": [1, 2, 3, 4], "color": ["red", "green", "red", "gold"]})
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
-    assert published.equals(expected.sort("widget_id"))
+    assert published.drop("etl_row_hash").equals(expected.sort("widget_id"))
+    assert published["etl_row_hash"].equals(
+        add_etl_row_hash(expected.lazy()).collect().sort("widget_id")["etl_row_hash"]
+    )
 
 
 def test_publish_rejects_empty_grain(widget_source, widget_frame, warehouse) -> None:

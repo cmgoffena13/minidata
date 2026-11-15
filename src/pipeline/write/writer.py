@@ -1,6 +1,7 @@
 from polars import LazyFrame
 
 from src.pipeline.pipeline_utils import warehouse_directory
+from src.pipeline.polars_utils import add_etl_row_hash
 from src.sources.base import SourceConfig
 
 
@@ -10,7 +11,7 @@ class DeltaWriter:
 
     def write(self, frame: LazyFrame) -> str:
         staging_table_name = self._staging_target()
-        frame.sink_delta(
+        add_etl_row_hash(frame).sink_delta(
             staging_table_name,
             mode="overwrite",
             delta_write_options=self._write_options(),
