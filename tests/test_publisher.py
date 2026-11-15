@@ -10,7 +10,7 @@ from src.pipeline.runner import PipelineRunner
 from src.pipeline.target import create_target_table
 from src.settings import config
 from src.sources.csv_source import CSVSourceConfig
-from src.tests.fixtures.widgets import WidgetSchema
+from tests.fixtures.widgets import WidgetSchema
 
 
 def test_publisher_does_not_create_the_target(widget_source, warehouse) -> None:

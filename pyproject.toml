@@ -41,11 +41,11 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = [ "src/tests" ]
+testpaths = [ "tests" ]
 pythonpath = [ "." ]
 
 [tool.coverage.run]
-omit = ["src/tests/*", "src/logging_conf.py", "src/settings.py"]
+omit = ["tests/*", "src/logging_conf.py", "src/settings.py"]
 
 [tool.coverage.report]
 fail_under = 90

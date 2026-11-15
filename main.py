@@ -8,7 +8,7 @@ from src.processor import Processor
 from src.sources.base import SourceConfig
 from src.sources.csv_source import CSVSourceConfig
 from src.sources.registry import SourceRegistry
-from src.tests.fixtures.widgets import WidgetSchema
+from tests.fixtures.widgets import WidgetSchema
 
 ROOT = Path(__file__).resolve().parent
 
@@ -29,7 +29,7 @@ def main() -> None:
         name="widgets",
         source_schema=WidgetSchema,
         grain=["widget_id"],
-        location=str(ROOT / "src/tests/fixtures/files/widgets.csv"),
+        location=str(ROOT / "tests/fixtures/files/widgets.csv"),
     )
     registry = SourceRegistry()
     registry.add_sources([source])

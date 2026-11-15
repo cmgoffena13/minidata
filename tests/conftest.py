@@ -10,7 +10,7 @@ from polars import LazyFrame
 
 from src.settings import config
 from src.sources.base import SourceConfig
-from src.tests.fixtures.widgets import WIDGET_ROWS, WIDGET_SOURCE
+from tests.fixtures.widgets import WIDGET_ROWS, WIDGET_SOURCE
 
 
 @pytest.fixture

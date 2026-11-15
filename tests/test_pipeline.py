@@ -10,8 +10,8 @@ from src.processor import Processor
 from src.sources.base import SourceConfig
 from src.sources.master import MASTER_REGISTRY
 from src.sources.registry import ALL_CONFIGS, SourceRegistry
-from src.tests.fixtures.widgets import WidgetSchema
 from src.utils import retry
+from tests.fixtures.widgets import WidgetSchema
 
 
 def test_schema_converts_to_polars() -> None:

@@ -10,7 +10,7 @@ from src.pipeline.runner import PipelineRunner
 from src.sources.base import SourceConfig
 from src.sources.csv_source import CSVSourceConfig
 from src.sources.db_source import DBSourceConfig
-from src.tests.fixtures.widgets import WIDGET_ROWS, WidgetSchema
+from tests.fixtures.widgets import WIDGET_ROWS, WidgetSchema
 
 
 def test_runner_reads_csv_location(
