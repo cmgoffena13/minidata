@@ -3,6 +3,7 @@ from pathlib import Path
 from deltalake import DeltaTable
 from deltalake.fs import DeltaStorageHandler
 from polars import LazyFrame
+from pydantic import BaseModel, ConfigDict
 
 from src.pipeline.audit.auditor import StagingAuditor
 from src.pipeline.pipeline_utils import create_target_table
@@ -12,6 +13,15 @@ from src.pipeline.write.writer import DeltaWriter
 from src.sources.base import SourceConfig
 from src.sources.file_source import FileSourceConfig
 from src.utils import retry
+
+
+class PipelineRunResult(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    success: bool
+    source_name: str
+    error: BaseException | None = None
+    location: str | None = None
 
 
 class PipelineRunner:
@@ -46,12 +56,24 @@ class PipelineRunner:
                     path.rmdir()
             directory.rmdir()
 
-    def run(self) -> None:
-        staging_name = None
-        if isinstance(self.source_config, FileSourceConfig):
-            staging_name = self.source_config.staging_name
-        frame = self.read()
-        staging_table_name = self.write(frame, staging_name=staging_name)
-        self.audit(staging_table_name)
-        self.publish(staging_table_name)
-        self.cleanup(staging_table_name)
+    def run(self) -> PipelineRunResult:
+        error: BaseException | None = None
+        location = None
+        try:
+            staging_name = None
+            if isinstance(self.source_config, FileSourceConfig):
+                staging_name = self.source_config.staging_name
+                location = self.source_config.location
+            frame = self.read()
+            staging_table_name = self.write(frame, staging_name=staging_name)
+            self.audit(staging_table_name)
+            self.publish(staging_table_name)
+            self.cleanup(staging_table_name)
+        except Exception as caught:  # noqa: BLE001
+            error = caught
+        return PipelineRunResult(
+            success=error is None,
+            source_name=self.source_config.name,
+            error=error,
+            location=location,
+        )

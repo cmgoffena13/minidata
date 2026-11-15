@@ -1,12 +1,19 @@
+import threading
 import time
+from unittest.mock import MagicMock
 
 import pytest
 from polars import LazyFrame
 
-from src.exceptions import NON_RETRYABLE_EXCEPTIONS, SchemaConformanceError
+from src.exceptions import (
+    NON_RETRYABLE_EXCEPTIONS,
+    ProcessingError,
+    SchemaConformanceError,
+)
+from src.pipeline.audit.auditor import StagingAuditor
 from src.pipeline.read.base import BaseReader
 from src.pipeline.read.factory import ReaderFactory
-from src.pipeline.runner import PipelineRunner
+from src.pipeline.runner import PipelineRunner, PipelineRunResult
 from src.processor import Processor
 from src.sources.base import SourceConfig
 from src.sources.master import MASTER_REGISTRY
@@ -56,12 +63,13 @@ def test_processor_runs_each_source(
     registry.add_sources([widget_source, other])
     started: list[SourceConfig] = []
 
-    def record(runner: PipelineRunner) -> None:
+    def record(runner: PipelineRunner) -> PipelineRunResult:
         started.append(runner.source_config)
+        return PipelineRunResult(success=True, source_name=runner.source_config.name)
 
     monkeypatch.setattr(PipelineRunner, "run", record)
     Processor(registry).process()
-    assert started == [widget_source, other]
+    assert {source.name for source in started} == {"widgets", "gadgets"}
     started.clear()
     Processor(registry).process("widgets")
     assert started == [widget_source]
@@ -74,6 +82,101 @@ def test_processor_runs_each_source(
     registry.add_sources([matched])
     Processor(registry).process("widget_*")
     assert started == [matched]
+
+
+def test_processor_runs_sources_in_parallel(
+    widget_source: SourceConfig,
+    monkeypatch: pytest.MonkeyPatch,
+    warehouse,
+) -> None:
+    other = widget_source.model_copy(update={"name": "gadgets"})
+    registry = SourceRegistry()
+    registry.add_sources([widget_source, other])
+    barrier = threading.Barrier(2, timeout=2)
+
+    def record(runner: PipelineRunner) -> PipelineRunResult:
+        assert runner.source_config.name in {"widgets", "gadgets"}
+        barrier.wait()
+        return PipelineRunResult(success=True, source_name=runner.source_config.name)
+
+    monkeypatch.setattr(PipelineRunner, "run", record)
+    Processor(registry).process()
+    assert (warehouse / "widgets").is_dir()
+    assert (warehouse / "gadgets").is_dir()
+
+
+def test_runner_run_returns_success(
+    widget_source,
+    monkeypatch: pytest.MonkeyPatch,
+    warehouse,
+) -> None:
+    monkeypatch.setattr(
+        PipelineRunner,
+        "read",
+        lambda _self: LazyFrame({"widget_id": [1], "color": ["red"]}),
+    )
+    result = PipelineRunner(widget_source).run()
+    assert result.success is True
+    assert result.error is None
+    assert (warehouse / "widgets").is_dir()
+
+
+def test_runner_run_returns_failure_with_exception(
+    widget_source,
+    monkeypatch: pytest.MonkeyPatch,
+    warehouse,
+) -> None:
+    def fail(_self, _staging_table_name: str) -> None:
+        raise ValueError("audit failed")
+
+    monkeypatch.setattr(
+        PipelineRunner,
+        "read",
+        lambda _self: LazyFrame({"widget_id": [1], "color": ["red"]}),
+    )
+    monkeypatch.setattr(StagingAuditor, "audit", fail)
+    monkeypatch.setattr("src.utils.time.sleep", lambda _seconds: None)
+    result = PipelineRunner(widget_source).run()
+    assert result.success is False
+    assert isinstance(result.error, ValueError)
+    assert str(result.error) == "audit failed"
+    assert (warehouse / "widgets").is_dir()
+
+
+def test_processor_raises_after_all_tasks_finish(
+    widget_source: SourceConfig,
+    monkeypatch: pytest.MonkeyPatch,
+    warehouse,
+) -> None:
+    other = widget_source.model_copy(update={"name": "gadgets"})
+    registry = SourceRegistry()
+    registry.add_sources([widget_source, other])
+    barrier = threading.Barrier(2, timeout=2)
+    finished: list[str] = []
+
+    def record(runner: PipelineRunner) -> PipelineRunResult:
+        name = runner.source_config.name
+        barrier.wait()
+        finished.append(name)
+        result = PipelineRunResult(success=True, source_name=name)
+        if name == "widgets":
+            result = PipelineRunResult(
+                success=False,
+                source_name=name,
+                error=RuntimeError("widgets failed"),
+            )
+        return result
+
+    notify = MagicMock()
+    monkeypatch.setattr(PipelineRunner, "run", record)
+    monkeypatch.setattr("src.processor.SlackNotifier.notify", notify)
+    with pytest.raises(ProcessingError, match="widgets failed") as raised:
+        Processor(registry).process()
+    assert set(finished) == {"widgets", "gadgets"}
+    assert len(raised.value.failures) == 1
+    notify.assert_called_once()
+    assert (warehouse / "widgets").is_dir()
+    assert (warehouse / "gadgets").is_dir()
 
 
 def test_reader_factory_returns_registered_reader(widget_source: SourceConfig) -> None:

@@ -4,6 +4,7 @@ import polars as pl
 import pytest
 from deltalake.exceptions import CommitFailedError
 
+from src.exceptions import ProcessingError
 from src.pipeline.audit.auditor import StagingAuditor
 from src.pipeline.publish.publisher import Publisher
 from src.pipeline.runner import PipelineRunner
@@ -95,7 +96,7 @@ def test_file_batch_keeps_scan_file_when_publish_fails(
 
     monkeypatch.setattr(Publisher, "publish", fail)
     monkeypatch.setattr("src.utils.time.sleep", lambda _seconds: None)
-    with pytest.raises(ValueError, match="publish failed"):
+    with pytest.raises(ProcessingError, match="publish failed"):
         _process(source)
     assert path.exists()
     assert (archive / "widget_a.csv").exists()
@@ -193,7 +194,7 @@ def test_file_batch_raises_after_commit_retries_are_exhausted(
 
     monkeypatch.setattr(Publisher, "publish", always_fail)
     monkeypatch.setattr("src.utils.time.sleep", lambda _seconds: None)
-    with pytest.raises(CommitFailedError, match="conflict"):
+    with pytest.raises(ProcessingError, match="conflict"):
         _process(source)
     assert path.exists()
     assert (warehouse / "widgets").is_dir()

@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 
 datawarehouse/
+archive/
+incoming/
 
 # JSON (JSON has no place here) - GCP Credentials, etc.
 *.json

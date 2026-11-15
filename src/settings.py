@@ -22,6 +22,7 @@ class GlobalConfig(BaseConfig):
     OPEN_TELEMETRY_AUTHORIZATION_TOKEN: str | None = None
     OPEN_TELEMETRY_FLAG: bool = False
     DATAWAREHOUSE_URL: str | None = None
+    SLACK_WEBHOOK_URL: str | None = None
 
     @model_validator(mode="after")
     def require_otel_config(self):
