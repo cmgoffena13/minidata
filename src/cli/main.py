@@ -28,6 +28,18 @@ def process(source: str | None = Argument(None)) -> None:
         raise Exit(1) from None
 
 
+@app.command()
+def source(pattern: str | None = Argument(None)) -> None:
+    sources = MASTER_REGISTRY.get_sources()
+    if pattern is not None:
+        sources = MASTER_REGISTRY.find_sources(pattern)
+        if not sources:
+            echo(f'No matches for "{pattern}"')
+            return
+    for name in sorted(item.name for item in sources):
+        echo(name)
+
+
 def main() -> None:
     app()
 
