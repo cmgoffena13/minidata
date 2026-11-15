@@ -2,4 +2,4 @@
 
 ## Local Setup
 
-Run `make install` and fill in the `.env` file.
+Run `make install`
