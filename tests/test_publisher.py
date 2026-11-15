@@ -5,9 +5,9 @@ import pytest
 from deltalake import DeltaTable
 
 from main import select_target
-from src.pipeline.publisher import Publisher
+from src.pipeline.pipeline_utils import create_target_table
+from src.pipeline.publish.publisher import Publisher
 from src.pipeline.runner import PipelineRunner
-from src.pipeline.target import create_target_table
 from src.settings import config
 from src.sources.csv_source import CSVSourceConfig
 from tests.fixtures.widgets import WidgetSchema

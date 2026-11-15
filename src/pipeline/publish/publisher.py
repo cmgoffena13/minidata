@@ -1,7 +1,6 @@
 from polars import scan_delta
 
-from src.pipeline.pipeline_utils import quote_identifier
-from src.pipeline.target import target_table_name
+from src.pipeline.pipeline_utils import quote_identifier, target_table_name
 from src.sources.base import SourceConfig
 
 

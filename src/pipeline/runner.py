@@ -4,10 +4,10 @@ from deltalake import DeltaTable
 from deltalake.fs import DeltaStorageHandler
 from polars import LazyFrame
 
-from src.pipeline.audit import StagingAuditor
-from src.pipeline.publisher import Publisher
+from src.pipeline.audit.auditor import StagingAuditor
+from src.pipeline.pipeline_utils import create_target_table
+from src.pipeline.publish.publisher import Publisher
 from src.pipeline.read.factory import ReaderFactory
-from src.pipeline.target import create_target_table
 from src.pipeline.write.writer import DeltaWriter
 from src.sources.base import SourceConfig
 

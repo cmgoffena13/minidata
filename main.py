@@ -3,7 +3,7 @@ from pathlib import Path
 import duckdb
 
 from src.logging_conf import setup_logging
-from src.pipeline.target import target_table_name
+from src.pipeline.pipeline_utils import target_table_name
 from src.processor import Processor
 from src.sources.base import SourceConfig
 from src.sources.csv_source import CSVSourceConfig
