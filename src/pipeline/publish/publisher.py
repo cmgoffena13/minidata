@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from polars import scan_delta
 
-from src.pipeline.pipeline_utils import quote_identifier, target_table_name
+from src.pipeline.pipeline_utils import managed_etl_columns, quote_identifier, target_table_name
 from src.sources.base import SourceConfig
 
 
@@ -25,7 +25,7 @@ class Publisher:
             f"s.{quote_identifier(column)} = t.{quote_identifier(column)}" for column in grain
         )
         merger = self._start_merge(staging_table_name, predicate)
-        assignments = self._source_assignments()
+        assignments = self._source_assignments(staging_table_name)
         active_column = "is_source_system_active"
         quoted = f"t.{quote_identifier(active_column)}"
         hash_changed = (
@@ -53,7 +53,7 @@ class Publisher:
         snapshot_date = datetime.now(UTC).date().isoformat()
         dated = f"t.{quote_identifier('snapshot_date')} = DATE '{snapshot_date}'"
         merger = self._start_merge(staging_table_name, "false")
-        assignments = self._source_assignments()
+        assignments = self._source_assignments(staging_table_name)
         assignments["snapshot_date"] = f"DATE '{snapshot_date}'"
         merger.when_not_matched_by_source_delete(predicate=dated).when_not_matched_insert(
             updates={**assignments, "etl_created_on": "current_timestamp()"},
@@ -67,12 +67,18 @@ class Publisher:
                 "predicate": predicate,
                 "source_alias": "s",
                 "target_alias": "t",
+                "merge_schema": True,
             },
         )
         if merger is None:
             raise RuntimeError("Delta merge was not started")
         return merger
 
-    def _source_assignments(self) -> dict[str, str]:
-        columns = [*self.source_config.source_schema.to_polars_schema(), "etl_row_hash"]
+    def _source_assignments(self, staging_table_name: str) -> dict[str, str]:
+        managed = set(managed_etl_columns(self.source_config.publish_mode))
+        columns = [
+            name
+            for name in scan_delta(staging_table_name).collect_schema().names()
+            if name not in managed
+        ]
         return {column: f"s.{quote_identifier(column)}" for column in columns}

@@ -42,16 +42,21 @@ def target_table_name(source_config: SourceConfig) -> str:
     return f"{warehouse_directory()}/{source_config.name}"
 
 
+def managed_etl_columns(publish_mode: str) -> dict:
+    columns = {"etl_created_on": Datetime(time_zone="UTC")}
+    if publish_mode == "mirror":
+        columns["etl_updated_on"] = Datetime(time_zone="UTC")
+        columns["is_source_system_active"] = Boolean
+    else:
+        columns["snapshot_date"] = Date
+    return columns
+
+
 def create_target_table(source_config: SourceConfig) -> str:
     table_name = target_table_name(source_config)
     schema = dict(source_config.source_schema.to_polars_schema())
     schema["etl_row_hash"] = String
-    schema["etl_created_on"] = Datetime(time_zone="UTC")
-    if source_config.publish_mode == "mirror":
-        schema["etl_updated_on"] = Datetime(time_zone="UTC")
-        schema["is_source_system_active"] = Boolean
-    if source_config.publish_mode == "snapshot":
-        schema["snapshot_date"] = Date
+    schema.update(managed_etl_columns(source_config.publish_mode))
     frame = DataFrame(schema=schema)
     partitions = source_config.partition_by
     write_options = {"partition_by": partitions} if partitions else None

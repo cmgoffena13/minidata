@@ -16,7 +16,12 @@ def test_runner_writes_lazy_frame_to_staging_table(
     path = PipelineRunner(widget_source).write(widget_frame)
     written = pl.read_delta(path).sort("widget_id")
     assert path == f"{warehouse}/staging_widgets"
-    assert written.drop("etl_row_hash").equals(widget_frame.collect().sort("widget_id"))
+    assert written.drop(
+        "etl_row_hash",
+        "etl_created_on",
+        "etl_updated_on",
+        "is_source_system_active",
+    ).equals(widget_frame.collect().sort("widget_id"))
 
 
 def test_runner_overwrites_staging_table(widget_source, widget_frame, warehouse: Path) -> None:
@@ -24,7 +29,16 @@ def test_runner_overwrites_staging_table(widget_source, widget_frame, warehouse:
     runner.write(widget_frame)
     replacement = pl.LazyFrame({"widget_id": [9], "color": ["green"]})
     path = runner.write(replacement)
-    assert pl.read_delta(path).drop("etl_row_hash").equals(replacement.collect())
+    assert (
+        pl.read_delta(path)
+        .drop(
+            "etl_row_hash",
+            "etl_created_on",
+            "etl_updated_on",
+            "is_source_system_active",
+        )
+        .equals(replacement.collect())
+    )
     assert path.startswith(str(warehouse))
 
 

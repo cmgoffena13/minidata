@@ -159,6 +159,22 @@ def test_publish_merges_staging_into_target(widget_source, widget_frame, warehou
     )
 
 
+def test_publish_evolves_target_schema_with_new_columns(
+    widget_source,
+    warehouse,
+) -> None:
+    runner = PipelineRunner(widget_source)
+    runner.publish(runner.write(pl.LazyFrame({"widget_id": [1], "color": ["red"]})))
+    staging_table_name = runner.write(
+        pl.LazyFrame({"widget_id": [1], "color": ["blue"], "size": ["L"]})
+    )
+    runner.publish(staging_table_name)
+    published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
+    assert "size" in published.columns
+    assert published["color"].to_list() == ["blue"]
+    assert published["size"].to_list() == ["L"]
+
+
 def test_publish_rejects_empty_grain(widget_source, widget_frame, warehouse) -> None:
     source = widget_source.model_copy(update={"grain": []})
     runner = PipelineRunner(source)
