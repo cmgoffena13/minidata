@@ -11,6 +11,13 @@ class BaseSchema(BaseModel):
     def to_polars_schema(cls):
         return poldantic_to_polars_schema(cls)
 
+    @classmethod
+    def source_rename_map(cls) -> dict[str, str]:
+        return {
+            (info.alias if info.alias is not None else name): name
+            for name, info in cls.model_fields.items()
+        }
+
 
 class SourceConfig(BaseModel):
     name: str

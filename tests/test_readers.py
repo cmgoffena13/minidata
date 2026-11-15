@@ -13,7 +13,7 @@ from src.sources.base import SourceConfig
 from src.sources.csv_source import CSVSourceConfig
 from src.sources.db_source import DBSourceConfig
 from src.sources.parquet_source import ParquetSourceConfig
-from tests.fixtures.widgets import WIDGET_ROWS, WidgetSchema
+from tests.fixtures.widgets import WIDGET_ROWS, AliasedWidgetSchema, WidgetSchema
 
 
 def test_runner_reads_csv_location(
@@ -96,6 +96,29 @@ def test_readers_reject_plain_source_config(widget_source: SourceConfig) -> None
         DbReader(widget_source).read()
     with pytest.raises(TypeError, match="ParquetSourceConfig"):
         ParquetReader(widget_source).read()
+
+
+def test_runner_read_renames_aliased_csv_columns(
+    tmp_path: Path,
+    warehouse: Path,
+) -> None:
+    location = tmp_path / "widgets.csv"
+    pl.DataFrame({"Widget ID": [1], "Purchase Date": ["2024-01-02"], "color": ["red"]}).write_csv(
+        location
+    )
+    source = CSVSourceConfig(
+        name="widgets",
+        source_schema=AliasedWidgetSchema,
+        grain=["widget_id"],
+        directory=str(tmp_path),
+        pattern="*.csv",
+        archive_directory=str(tmp_path / "archive"),
+        location=str(location),
+    )
+    written = PipelineRunner(source).read().collect()
+    assert written.columns == ["widget_id", "purchase_date", "color"]
+    assert written.to_dicts() == [{"widget_id": 1, "purchase_date": "2024-01-02", "color": "red"}]
+    assert (warehouse / "widgets").is_dir()
 
 
 def test_runner_read_rejects_files_missing_schema_columns(

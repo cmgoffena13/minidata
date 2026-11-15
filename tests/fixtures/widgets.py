@@ -1,8 +1,16 @@
+from pydantic import Field
+
 from src.sources.base import BaseSchema, SourceConfig
 
 
 class WidgetSchema(BaseSchema):
     widget_id: int
+    color: str
+
+
+class AliasedWidgetSchema(BaseSchema):
+    widget_id: int = Field(alias="Widget ID")
+    purchase_date: str = Field(alias="Purchase Date")
     color: str
 
 

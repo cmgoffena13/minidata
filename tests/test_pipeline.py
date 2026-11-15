@@ -12,7 +12,7 @@ from src.sources.base import SourceConfig
 from src.sources.master import MASTER_REGISTRY
 from src.sources.registry import ALL_CONFIGS, SourceRegistry
 from src.utils import retry
-from tests.fixtures.widgets import WidgetSchema
+from tests.fixtures.widgets import AliasedWidgetSchema, WidgetSchema
 
 
 def test_non_retryable_exceptions_includes_schema_conformance() -> None:
@@ -21,6 +21,14 @@ def test_non_retryable_exceptions_includes_schema_conformance() -> None:
 
 def test_schema_converts_to_polars() -> None:
     assert WidgetSchema.to_polars_schema()["widget_id"].is_integer()
+
+
+def test_schema_source_rename_map_uses_field_aliases() -> None:
+    assert AliasedWidgetSchema.source_rename_map() == {
+        "Widget ID": "widget_id",
+        "Purchase Date": "purchase_date",
+        "color": "color",
+    }
 
 
 def test_registry_collects_sources(widget_source: SourceConfig) -> None:

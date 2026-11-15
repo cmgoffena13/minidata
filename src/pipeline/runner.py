@@ -24,8 +24,12 @@ class PipelineRunner:
     @retry()
     def read(self) -> LazyFrame:
         frame = ReaderFactory.get_reader(self.source_config).read()
-        schema = self.source_config.source_schema.to_polars_schema()
-        return conform_to_schema(frame, schema)
+        source_schema = self.source_config.source_schema
+        return conform_to_schema(
+            frame,
+            source_schema.to_polars_schema(),
+            source_schema.source_rename_map(),
+        )
 
     def write(self, frame: LazyFrame, staging_name: str | None = None) -> str:
         return DeltaWriter(self.source_config).write(frame=frame, staging_name=staging_name)

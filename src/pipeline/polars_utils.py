@@ -4,12 +4,30 @@ from xxhash import xxh128_hexdigest
 from src.exceptions import SchemaConformanceError
 
 
-def conform_to_schema(frame: LazyFrame, schema: dict) -> LazyFrame:
+def conform_to_schema(
+    frame: LazyFrame,
+    schema: dict,
+    rename_map: dict[str, str],
+) -> LazyFrame:
     names = set(frame.collect_schema().names())
-    missing = [name for name in schema if name not in names]
+    missing = [
+        field_name
+        for field_name in schema
+        if field_name not in names
+        and not any(
+            source_name in names and target == field_name
+            for source_name, target in rename_map.items()
+        )
+    ]
     if missing:
         raise SchemaConformanceError(f"Missing required columns: {', '.join(missing)}")
-    return frame.with_columns([col(name).cast(dtype) for name, dtype in schema.items()])
+    rename = {
+        source_name: field_name
+        for source_name, field_name in rename_map.items()
+        if source_name in names and field_name not in names and source_name != field_name
+    }
+    renamed = frame.rename(rename) if rename else frame
+    return renamed.with_columns([col(name).cast(dtype) for name, dtype in schema.items()])
 
 
 def add_etl_row_hash(frame: LazyFrame) -> LazyFrame:
