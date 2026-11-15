@@ -4,6 +4,7 @@ import polars as pl
 import pytest
 from deltalake import DeltaTable
 
+from main import select_target
 from src.pipeline.publisher import Publisher
 from src.pipeline.runner import PipelineRunner
 from src.pipeline.target import create_target_table
@@ -48,6 +49,13 @@ def test_runner_creates_empty_target(widget_source, warehouse) -> None:
     assert target.columns == ["widget_id", "color"]
     PipelineRunner(widget_source)
     assert pl.read_delta(f"{warehouse}/widgets").is_empty()
+
+
+def test_select_target_reads_the_published_rows(widget_source, widget_frame, warehouse) -> None:
+    runner = PipelineRunner(widget_source)
+    runner.publish(runner.write(widget_frame))
+    assert sorted(select_target(widget_source)) == [(1, "red"), (2, "blue"), (3, "red")]
+    assert (warehouse / "widgets").is_dir()
 
 
 def test_publish_merges_staging_into_target(widget_source, widget_frame, warehouse) -> None:
