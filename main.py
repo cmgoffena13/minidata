@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import duckdb
@@ -25,11 +26,18 @@ def select_target(source: SourceConfig) -> list[tuple[object, ...]]:
 
 def main() -> None:
     setup_logging()
+    incoming = ROOT / "incoming"
+    archive = ROOT / "archive"
+    incoming.mkdir(exist_ok=True)
+    archive.mkdir(exist_ok=True)
+    shutil.copy2(ROOT / "tests/fixtures/files/widgets.csv", incoming / "widgets.csv")
     source = CSVSourceConfig(
         name="widgets",
         source_schema=WidgetSchema,
         grain=["widget_id"],
-        location=str(ROOT / "tests/fixtures/files/widgets.csv"),
+        directory=str(incoming),
+        pattern="widgets.csv",
+        archive_directory=str(archive),
     )
     registry = SourceRegistry()
     registry.add_sources([source])

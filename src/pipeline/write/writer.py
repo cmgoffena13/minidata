@@ -9,8 +9,8 @@ class DeltaWriter:
     def __init__(self, source_config: SourceConfig) -> None:
         self.source_config = source_config
 
-    def write(self, frame: LazyFrame) -> str:
-        staging_table_name = self._staging_target()
+    def write(self, frame: LazyFrame, staging_name: str | None = None) -> str:
+        staging_table_name = self._staging_target(staging_name)
         add_etl_row_hash(frame).sink_delta(
             staging_table_name,
             mode="overwrite",
@@ -18,8 +18,9 @@ class DeltaWriter:
         )
         return staging_table_name
 
-    def _staging_target(self) -> str:
-        return f"{warehouse_directory()}/staging_{self.source_config.name}"
+    def _staging_target(self, staging_name: str | None = None) -> str:
+        name = self.source_config.name if staging_name is None else staging_name
+        return f"{warehouse_directory()}/staging_{name}"
 
     def _write_options(self) -> dict[str, str | list[str]]:
         options: dict[str, str | list[str]] = {"schema_mode": "overwrite"}

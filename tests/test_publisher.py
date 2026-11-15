@@ -10,8 +10,10 @@ from src.pipeline.pipeline_utils import create_target_table
 from src.pipeline.polars_utils import add_etl_row_hash
 from src.pipeline.publish.publisher import Publisher
 from src.pipeline.runner import PipelineRunner
+from src.processor import Processor
 from src.settings import config
 from src.sources.csv_source import CSVSourceConfig
+from src.sources.registry import SourceRegistry
 from tests.fixtures.widgets import WidgetSchema
 
 
@@ -22,19 +24,31 @@ def test_publisher_does_not_create_the_target(widget_source, warehouse) -> None:
     assert pl.read_delta(f"{warehouse}/widgets").is_empty()
 
 
-def test_run_loads_the_fixture_csv(warehouse) -> None:
-    location = Path(__file__).resolve().parent / "fixtures" / "files" / "widgets.csv"
+def test_run_loads_the_fixture_csv(tmp_path: Path, warehouse) -> None:
+    fixture = Path(__file__).resolve().parent / "fixtures" / "files" / "widgets.csv"
+    scan = tmp_path / "incoming"
+    archive = tmp_path / "archive"
+    scan.mkdir()
+    archive.mkdir()
+    target = scan / "widgets.csv"
+    target.write_bytes(fixture.read_bytes())
     source = CSVSourceConfig(
         name="widgets",
         source_schema=WidgetSchema,
         grain=["widget_id"],
-        location=str(location),
+        directory=str(scan),
+        pattern="widgets.csv",
+        archive_directory=str(archive),
     )
-    PipelineRunner(source).run()
+    registry = SourceRegistry()
+    registry.add_sources([source])
+    Processor(registry).process()
     published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
     assert published.height == 3
     assert not DeltaTable.is_deltatable(f"{warehouse}/staging_widgets")
     assert not (warehouse / "staging_widgets").exists()
+    assert not target.exists()
+    assert (archive / "widgets.csv").exists()
 
 
 def test_runner_creates_the_bronze_warehouse(widget_source, tmp_path, monkeypatch) -> None:

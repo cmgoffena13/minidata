@@ -26,6 +26,9 @@ def test_runner_reads_csv_location(
         name="widgets",
         source_schema=WidgetSchema,
         grain=["widget_id"],
+        directory=str(tmp_path),
+        pattern="*.csv",
+        archive_directory=str(tmp_path / "archive"),
         location=str(location),
         storage_options={"aws_region": "us-east-1"},
     )
@@ -46,6 +49,9 @@ def test_runner_reads_parquet_location(
         name="widgets",
         source_schema=WidgetSchema,
         grain=["widget_id"],
+        directory=str(tmp_path),
+        pattern="*.parquet",
+        archive_directory=str(tmp_path / "archive"),
         location=str(location),
         storage_options={"aws_region": "us-east-1"},
     )
@@ -89,3 +95,57 @@ def test_readers_reject_plain_source_config(widget_source: SourceConfig) -> None
         DbReader(widget_source).read()
     with pytest.raises(TypeError, match="ParquetSourceConfig"):
         ParquetReader(widget_source).read()
+
+
+def test_file_readers_require_a_resolved_location(tmp_path: Path) -> None:
+    csv_source = CSVSourceConfig(
+        name="widgets",
+        source_schema=WidgetSchema,
+        grain=["widget_id"],
+        directory=str(tmp_path),
+        pattern="*.csv",
+        archive_directory=str(tmp_path / "archive"),
+    )
+    parquet_source = ParquetSourceConfig(
+        name="widgets",
+        source_schema=WidgetSchema,
+        grain=["widget_id"],
+        directory=str(tmp_path),
+        pattern="*.parquet",
+        archive_directory=str(tmp_path / "archive"),
+    )
+    with pytest.raises(ValueError, match="file location"):
+        CsvReader(csv_source).read()
+    with pytest.raises(ValueError, match="file location"):
+        ParquetReader(parquet_source).read()
+
+
+def test_runner_runs_a_database_source(
+    tmp_path: Path,
+    widget_frame: pl.LazyFrame,
+    warehouse: Path,
+) -> None:
+    database = tmp_path / "widgets.db"
+    connection = sqlite3.connect(database)
+    connection.execute("CREATE TABLE widgets (widget_id INTEGER, color TEXT)")
+    connection.executemany(
+        "INSERT INTO widgets (widget_id, color) VALUES (?, ?)",
+        list(zip(WIDGET_ROWS["widget_id"], WIDGET_ROWS["color"], strict=True)),
+    )
+    connection.commit()
+    connection.close()
+    source = DBSourceConfig(
+        name="widgets",
+        source_schema=WidgetSchema,
+        grain=["widget_id"],
+        location=f"sqlite:///{database}",
+        query="SELECT widget_id, color FROM widgets",
+    )
+    PipelineRunner(source).run()
+    published = pl.read_delta(f"{warehouse}/widgets").sort("widget_id")
+    assert published.drop(
+        "etl_row_hash",
+        "etl_created_on",
+        "etl_updated_on",
+        "is_source_system_active",
+    ).equals(widget_frame.collect().sort("widget_id"))

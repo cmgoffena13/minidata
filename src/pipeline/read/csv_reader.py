@@ -9,4 +9,6 @@ class CsvReader(BaseReader):
         config = self.source_config
         if not isinstance(config, CSVSourceConfig):
             raise TypeError("CsvReader requires a CSVSourceConfig")
+        if config.location is None:
+            raise ValueError("CsvReader requires a file location")
         return scan_csv(config.location, storage_options=config.storage_options)

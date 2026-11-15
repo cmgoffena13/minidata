@@ -1,7 +1,5 @@
-from src.sources.base import SourceConfig
+from src.sources.file_source import FileSourceConfig
 
 
-class CSVSourceConfig(SourceConfig):
+class CSVSourceConfig(FileSourceConfig):
     source_type: str = "csv"
-    location: str
-    storage_options: dict[str, str] | None = None

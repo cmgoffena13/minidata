@@ -1,7 +1,5 @@
-from src.sources.base import SourceConfig
+from src.sources.file_source import FileSourceConfig
 
 
-class ParquetSourceConfig(SourceConfig):
+class ParquetSourceConfig(FileSourceConfig):
     source_type: str = "parquet"
-    location: str
-    storage_options: dict[str, str] | None = None
