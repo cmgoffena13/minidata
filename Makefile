@@ -1,4 +1,5 @@
-.PHONY: ready format lint type-check test test-cov install upgrade run clean reset
+.PHONY: ready format lint type-check test test-cov install upgrade run clean reset query
+
 
 install:
 	git init
@@ -36,3 +37,17 @@ test-cov:
 
 run:
 	uv run -- python main.py
+
+ifeq ($(firstword $(MAKECMDGOALS)),query)
+  QUERY_SQL := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+endif
+
+query:
+	@test -n "$(QUERY_SQL)" || (echo "Usage: make query 'SELECT * FROM bronze.widgets'"; exit 1)
+	uv run -- minidata query "$(QUERY_SQL)"
+
+ifeq ($(firstword $(MAKECMDGOALS)),query)
+%:
+	@:
+endif
+

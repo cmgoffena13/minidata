@@ -3,6 +3,7 @@ from typer import Argument, Exit, Typer, echo
 from src.exceptions import SourceNotFoundError
 from src.logging_conf import setup_logging
 from src.processor import Processor
+from src.query import query as run_query
 from src.sources.master import MASTER_REGISTRY
 
 app = Typer(
@@ -38,6 +39,11 @@ def source(pattern: str | None = Argument(None)) -> None:
             return
     for name in sorted(item.name for item in sources):
         echo(name)
+
+
+@app.command("query")
+def query_command(sql: str = Argument(...)) -> None:
+    print(run_query(sql))
 
 
 def main() -> None:

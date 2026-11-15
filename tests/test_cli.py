@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import polars as pl
 import pytest
 from typer.testing import CliRunner
 
@@ -87,3 +90,17 @@ def test_source_reports_no_matches_for_pattern(monkeypatch: pytest.MonkeyPatch) 
     result = CliRunner().invoke(app, ["source", "missing"])
     assert result.exit_code == 0
     assert result.output == 'No matches for "missing"\n'
+
+
+def test_query_command_prints_dataframe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    warehouse = tmp_path / "bronze"
+    warehouse.mkdir()
+    monkeypatch.setattr("src.settings.config.DATAWAREHOUSE_URL", str(warehouse))
+    pl.DataFrame({"widget_id": [1]}).write_delta(warehouse / "widgets")
+    result = CliRunner().invoke(app, ["query", "SELECT widget_id FROM bronze.widgets"])
+    assert result.exit_code == 0
+    assert "widget_id" in result.output
+    assert "1" in result.output
